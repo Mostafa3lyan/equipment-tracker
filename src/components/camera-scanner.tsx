@@ -16,7 +16,6 @@ export default function CameraScanner({ onScanSuccess, onClose }: Props) {
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const elementId = "camera-scanner-viewfinder";
 
-  // 1. Declare handleStop up here so it's lexically available to everything below
   const handleStop = () => {
     if (scannerRef.current && scannerRef.current.isScanning) {
       scannerRef.current
@@ -26,7 +25,6 @@ export default function CameraScanner({ onScanSuccess, onClose }: Props) {
     }
   };
 
-  // 2. Now running the side effects safely
   useEffect(() => {
     const html5Qrcode = new Html5Qrcode(elementId);
     scannerRef.current = html5Qrcode;
@@ -62,61 +60,17 @@ export default function CameraScanner({ onScanSuccess, onClose }: Props) {
       | Html5QrcodeCameraScanConfig
       | undefined;
 
-    // Get all available camera devices to find the true back camera
-    Html5Qrcode.getCameras()
-      .then((devices) => {
-        if (!devices || devices.length === 0) {
-          throw new Error("No cameras found on this device.");
-        }
-
-        // Try to find a camera with "back", "rear", "environment", "main", or "out" in its label
-        let backCamera = devices.find((device) => {
-          const label = device.label.toLowerCase();
-          return (
-            label.includes("back") ||
-            label.includes("rear") ||
-            label.includes("environment") ||
-            label.includes("main") ||
-            label.includes("out")
-          );
-        });
-
-        // Fallback: On many multi-lens phones (especially iOS), the primary back camera is the last one in the list
-        if (!backCamera) {
-          backCamera = devices[devices.length - 1];
-        }
-
-        const selectedCameraId = backCamera.id;
-
-        html5Qrcode
-          .start(selectedCameraId, scanConfig, qrCodeSuccessCallback, () => {})
-          .catch((err) => {
-            console.warn(
-              "Failed starting with specific camera ID, trying facingMode fallback...",
-              err,
-            );
-            // Fallback constraint if starting by camera ID fails
-            html5Qrcode
-              .start(
-                { facingMode: "environment" },
-                scanConfig,
-                qrCodeSuccessCallback,
-                () => {},
-              )
-              .catch((fallbackErr) => {
-                console.error(
-                  "All camera initialization attempts failed:",
-                  fallbackErr,
-                );
-                setErrorMsg(
-                  "Camera access denied or device has no rear camera.",
-                );
-              });
-          });
-      })
+    // Use direct environmental constraint targeting since it opened your back camera correctly
+    html5Qrcode
+      .start(
+        { facingMode: "environment" },
+        scanConfig,
+        qrCodeSuccessCallback,
+        () => {},
+      )
       .catch((err) => {
-        console.error("Error fetching camera list:", err);
-        setErrorMsg("Could not request system camera permissions.");
+        console.error("Camera access failed:", err);
+        setErrorMsg("Camera access denied or device has no rear camera.");
       });
 
     return () => {

@@ -19,7 +19,7 @@ export const equipments: Equipment[] = [
   { room: "1150", equipmentNo: "IMC-0214", description: "Coagulation Analyzer", brand: "Stago", model: "Start 4" },
   { room: "1150", equipmentNo: "IMC-0470", description: "Hematology Analyzer", brand: "Sysmex", model: "XS-500i" },
   { room: "1150", equipmentNo: "IMC-0875", description: "Urine Analyzer", brand: "Roche", model: "Uryxxon Relax" },
-  { room: "1151", equipmentNo: "BL7305-0006", description: "Autoclave, Vertical", brand: "Tuttnauer", model: "3870ELV" },
+  { room: "1151", equipmentNo: "L7305-0006", description: "Autoclave, Vertical", brand: "Tuttnauer", model: "3870ELV" },
   { room: "1161", equipmentNo: "R6010-0001", description: "Refrigerator, Laboratory", brand: "Liebherr", model: "LKv 3910" },
   { room: "1164", equipmentNo: "L3570-0001", description: "Incubator, Co2", brand: "Sanyo", model: "MCO-18AIC" },
   { room: "1164", equipmentNo: "M3110-0012", description: "Oven, Drying", brand: "Memmert", model: "UNB 400" }
