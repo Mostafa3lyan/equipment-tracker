@@ -1,5 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { Html5Qrcode, Html5QrcodeSupportedFormats, type Html5QrcodeCameraScanConfig } from "html5-qrcode";
+import {
+  Html5Qrcode,
+  Html5QrcodeSupportedFormats,
+  type Html5QrcodeCameraScanConfig,
+} from "html5-qrcode";
 import { Camera, RefreshCw } from "lucide-react";
 
 interface Props {
@@ -54,34 +58,65 @@ export default function CameraScanner({ onScanSuccess, onClose }: Props) {
       Html5QrcodeSupportedFormats.EAN_8,
       Html5QrcodeSupportedFormats.UPC_A,
     ];
-    const scanConfig = { ...config, formatsToSupport } as Html5QrcodeCameraScanConfig | undefined ;
+    const scanConfig = { ...config, formatsToSupport } as
+      | Html5QrcodeCameraScanConfig
+      | undefined;
 
-    html5Qrcode
-      .start(
-        { facingMode: { exact: "environment" } },
-        scanConfig,
-        qrCodeSuccessCallback,
-        () => {},
-      )
-      .catch((err) => {
-        console.warn(
-          "Exact environment camera failed, trying loose facingMode...",
-          err,
-        );
+    // Get all available camera devices to find the true back camera
+    Html5Qrcode.getCameras()
+      .then((devices) => {
+        if (!devices || devices.length === 0) {
+          throw new Error("No cameras found on this device.");
+        }
+
+        // Try to find a camera with "back", "rear", "environment", "main", or "out" in its label
+        let backCamera = devices.find((device) => {
+          const label = device.label.toLowerCase();
+          return (
+            label.includes("back") ||
+            label.includes("rear") ||
+            label.includes("environment") ||
+            label.includes("main") ||
+            label.includes("out")
+          );
+        });
+
+        // Fallback: On many multi-lens phones (especially iOS), the primary back camera is the last one in the list
+        if (!backCamera) {
+          backCamera = devices[devices.length - 1];
+        }
+
+        const selectedCameraId = backCamera.id;
+
         html5Qrcode
-          .start(
-            { facingMode: "environment" },
-            scanConfig,
-            qrCodeSuccessCallback,
-            () => {},
-          )
-          .catch((fallbackErr) => {
-            console.error(
-              "All camera initialization attempts failed:",
-              fallbackErr,
+          .start(selectedCameraId, scanConfig, qrCodeSuccessCallback, () => {})
+          .catch((err) => {
+            console.warn(
+              "Failed starting with specific camera ID, trying facingMode fallback...",
+              err,
             );
-            setErrorMsg("Camera access denied or device has no rear camera.");
+            // Fallback constraint if starting by camera ID fails
+            html5Qrcode
+              .start(
+                { facingMode: "environment" },
+                scanConfig,
+                qrCodeSuccessCallback,
+                () => {},
+              )
+              .catch((fallbackErr) => {
+                console.error(
+                  "All camera initialization attempts failed:",
+                  fallbackErr,
+                );
+                setErrorMsg(
+                  "Camera access denied or device has no rear camera.",
+                );
+              });
           });
+      })
+      .catch((err) => {
+        console.error("Error fetching camera list:", err);
+        setErrorMsg("Could not request system camera permissions.");
       });
 
     return () => {
