@@ -33,7 +33,7 @@ export default function EquipmentCard({ equipment }: Props) {
       <div className="flex items-center justify-between bg-green-50 px-6 py-4 border-b border-green-100">
         <span className="flex items-center gap-2 font-semibold text-green-700">
           <span className="h-2.5 w-2.5 rounded-full bg-green-500 animate-pulse" />
-          Equipment Found
+          Equipment Found  -- ايوة يا عمرو يا فنان
         </span>
         <button
           onClick={handleCopy}

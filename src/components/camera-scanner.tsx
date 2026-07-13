@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Html5Qrcode } from "html5-qrcode";
+import { Html5Qrcode, Html5QrcodeSupportedFormats, type Html5QrcodeCameraScanConfig } from "html5-qrcode";
 import { Camera, RefreshCw } from "lucide-react";
 
 interface Props {
@@ -12,6 +12,7 @@ export default function CameraScanner({ onScanSuccess, onClose }: Props) {
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const elementId = "camera-scanner-viewfinder";
 
+  // 1. Declare handleStop up here so it's lexically available to everything below
   const handleStop = () => {
     if (scannerRef.current && scannerRef.current.isScanning) {
       scannerRef.current
@@ -21,8 +22,8 @@ export default function CameraScanner({ onScanSuccess, onClose }: Props) {
     }
   };
 
+  // 2. Now running the side effects safely
   useEffect(() => {
-    // Instantiate Html5Qrcode on render
     const html5Qrcode = new Html5Qrcode(elementId);
     scannerRef.current = html5Qrcode;
 
@@ -32,26 +33,55 @@ export default function CameraScanner({ onScanSuccess, onClose }: Props) {
     };
 
     const config = {
-      fps: 10,
+      fps: 15,
       qrbox: (width: number, height: number) => {
-        const size = Math.min(width, height) * 0.7;
-        return { width: size, height: size * 0.6 }; // Wider bounding box ideal for traditional barcodes
+        const boxWidth = Math.min(width, height) * 0.85;
+        const boxHeight = boxWidth * 0.35;
+        return { width: boxWidth, height: boxHeight };
+      },
+      videoConstraints: {
+        width: { min: 640, ideal: 1920, max: 1920 },
+        height: { min: 480, ideal: 1080, max: 1080 },
+        aspectRatio: { ideal: 1.7777777778 },
       },
     };
 
-    // Attempt to open the environment-facing camera
+    const formatsToSupport = [
+      Html5QrcodeSupportedFormats.QR_CODE,
+      Html5QrcodeSupportedFormats.CODE_128,
+      Html5QrcodeSupportedFormats.CODE_39,
+      Html5QrcodeSupportedFormats.EAN_13,
+      Html5QrcodeSupportedFormats.EAN_8,
+      Html5QrcodeSupportedFormats.UPC_A,
+    ];
+    const scanConfig = { ...config, formatsToSupport } as Html5QrcodeCameraScanConfig | undefined ;
+
     html5Qrcode
       .start(
-        { facingMode: "environment" },
-        config,
+        { facingMode: { exact: "environment" } },
+        scanConfig,
         qrCodeSuccessCallback,
-        () => {}, // Ignore frame analysis warnings/errors
+        () => {},
       )
       .catch((err) => {
-        console.error("Camera access failed:", err);
-        setErrorMsg(
-          "Could not access environment camera. Check browser permissions.",
+        console.warn(
+          "Exact environment camera failed, trying loose facingMode...",
+          err,
         );
+        html5Qrcode
+          .start(
+            { facingMode: "environment" },
+            scanConfig,
+            qrCodeSuccessCallback,
+            () => {},
+          )
+          .catch((fallbackErr) => {
+            console.error(
+              "All camera initialization attempts failed:",
+              fallbackErr,
+            );
+            setErrorMsg("Camera access denied or device has no rear camera.");
+          });
       });
 
     return () => {
@@ -66,7 +96,9 @@ export default function CameraScanner({ onScanSuccess, onClose }: Props) {
         <div className="flex items-center justify-between border-b border-gray-800 px-5 py-4">
           <div className="flex items-center gap-2 text-white">
             <Camera size={18} className="text-blue-500 animate-pulse" />
-            <span className="font-medium text-sm">Align code inside frame</span>
+            <span className="font-medium text-sm">
+              Align barcode inside frame
+            </span>
           </div>
           <button
             onClick={onClose}
@@ -77,7 +109,7 @@ export default function CameraScanner({ onScanSuccess, onClose }: Props) {
         </div>
 
         {/* Viewfinder Container */}
-        <div className="relative aspect-video w-full bg-black">
+        <div className="relative aspect-square w-full bg-black">
           <div id={elementId} className="h-full w-full overflow-hidden" />
 
           {errorMsg && (
@@ -96,7 +128,7 @@ export default function CameraScanner({ onScanSuccess, onClose }: Props) {
         {/* Footer info */}
         <div className="bg-gray-950 p-4 text-center">
           <p className="text-xs text-gray-500">
-            Supports standard Barcodes and QR codes
+            Hold device steady. Ensure good lighting.
           </p>
         </div>
       </div>
